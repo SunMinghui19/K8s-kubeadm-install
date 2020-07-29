@@ -2,19 +2,19 @@
 
 # 一、集群规划
 ```
-	mater
-		主机名：k8s-master1
-		IP:192.168.133.60
-	worker1
-		主机名：k8s-node1
-		IP:192.168.133.61
-	worker2
-		主机名：k8s-node02
-		IP:192.168.133.62
-		
-	k8s版本：1.16
-	安装方式：kubeadm
-	操作系统：CentOS7
+mater
+	主机名：k8s-master1
+	IP:192.168.133.60
+worker1
+	主机名：k8s-node1
+	IP:192.168.133.61
+worker2
+	主机名：k8s-node02
+	IP:192.168.133.62
+
+k8s版本：1.16
+安装方式：kubeadm
+操作系统：CentOS7
 ```
 # 二、初始化服务器(所有节点都要做)
 ## 准备工作
@@ -25,120 +25,122 @@
 
 ## 2.1、配置主机名称
   ```
-		# hostnamectl set-hostname [主机名]
-		# hostname 查看主机名
+# hostnamectl set-hostname [主机名]
+# hostname 查看主机名
   ```
 ## 2.2、配置名称解析
 ```
-		vim /etc/hosts 
-		添加
-			192.168.133.60   k8s-master1
-			192.168.133.61   k8s-node1
-			192.168.133.62   k8s-node2
+vim /etc/hosts 
+添加
+	192.168.133.60   k8s-master1
+	192.168.133.61   k8s-node1
+	192.168.133.62   k8s-node2
 ```
 ## 2.3、安装依赖包
 ```
-		# yum install -y conntrack ntpdate ntp ipvsadm ipset jq iptables curl sysstat libseccomp wgetvimnet-tools git	
+# yum install -y conntrack ntpdate ntp ipvsadm ipset jq iptables curl sysstat libseccomp wgetvimnet-tools git	
 ```
 ## 2.4、设置防火墙为 Iptables 并设置空规则
 ```
-    关闭防火墙、禁用防火墙
-		# systemctl stop firewalld && systemctl disable firewalld
-    安装iptables服务，开启iptables服务，开机自启iptables，清空iptables规则，保存iptables的设置
-		# yum -y install iptables-services && systemctl start iptables &&  systemctl enable iptables && iptables -F && service iptables save
+关闭防火墙、禁用防火墙
+# systemctl stop firewalld && systemctl disable firewalld
+
+安装iptables服务，开启iptables服务，开机自启iptables，清空iptables规则，保存iptables的设置
+# yum -y install iptables-services && systemctl start iptables &&  systemctl enable iptables && iptables -F && service iptables save
 ```
 ## 2.5、关闭交换分区和selinux
   ```
-    关闭交换分区
-		# swapoff -a && sed -i '/  swap  /  s/^\(.*\)$/#\1/g'  /etc/fstab
-    关闭selinux
-		# setenforce  0  &&  sed  -i  's/^SELINUX=.*/SELINUX=disabled/'  /etc/selinux/config
+关闭交换分区
+# swapoff -a && sed -i '/  swap  /  s/^\(.*\)$/#\1/g'  /etc/fstab
+
+关闭selinux
+# setenforce  0  &&  sed  -i  's/^SELINUX=.*/SELINUX=disabled/'  /etc/selinux/config
   ```
 	
 ## 2.6、调整内核参数，对于 K8S
 ```
-	 #cat > kubernetes.conf <<EOF
-		net.bridge.bridge-nf-call-iptables=1
-		net.bridge.bridge-nf-call-ip6tables=1
-		net.ipv4.ip_forward=1
-		net.ipv4.tcp_tw_recycle=0
-		vm.swappiness=0 # 禁止使用 swap 空间，只有当系统 OOM 时才允许使用它
-		vm.overcommit_memory=1 # 不检查物理内存是否够用
-		vm.panic_on_oom=0 # 开启 OOM
-		fs.inotify.max_user_instances=8192
-		fs.inotify.max_user_watches=1048576
-		fs.file-max=52706963
-		fs.nr_open=52706963
-		net.ipv6.conf.all.disable_ipv6=1
-		net.netfilter.nf_conntrack_max=2310720
-		EOF
-		
-		# mv kubernetes.conf  /etc/sysctl.d/kubernetes.conf
-		# sysctl -p /etc/sysctl.d/kubernetes.conf	
+#cat > kubernetes.conf <<EOF
+net.bridge.bridge-nf-call-iptables=1
+net.bridge.bridge-nf-call-ip6tables=1
+net.ipv4.ip_forward=1
+net.ipv4.tcp_tw_recycle=0
+vm.swappiness=0 # 禁止使用 swap 空间，只有当系统 OOM 时才允许使用它
+vm.overcommit_memory=1 # 不检查物理内存是否够用
+vm.panic_on_oom=0 # 开启 OOM
+fs.inotify.max_user_instances=8192
+fs.inotify.max_user_watches=1048576
+fs.file-max=52706963
+fs.nr_open=52706963
+net.ipv6.conf.all.disable_ipv6=1
+net.netfilter.nf_conntrack_max=2310720
+EOF
+
+# mv kubernetes.conf  /etc/sysctl.d/kubernetes.conf
+# sysctl -p /etc/sysctl.d/kubernetes.conf	
 
 ```
   
 ## 2.7、调整系统时区
 
 ```
-		# 设置系统时区为中国/上海
-		timedatectl set-timezone Asia/Shanghai
-		# 将当前的 UTC 时间写入硬件时钟
-		timedatectl set-local-rtc 0
-		# 重启依赖于系统时间的服务
-		systemctl restart rsyslog
-		systemctl restart crond
+# 设置系统时区为中国/上海
+timedatectl set-timezone Asia/Shanghai
+# 将当前的 UTC 时间写入硬件时钟
+timedatectl set-local-rtc 0
+# 重启依赖于系统时间的服务
+systemctl restart rsyslog
+systemctl restart crond
 		
 ```
 ## 2.8、关闭系统不需要服务
 ```
-		# systemctl stop postfix && systemctl disable postfix
+# systemctl stop postfix && systemctl disable postfix
 ```
 	
 ## 2.9、设置 rsyslogd 和 systemd journald
 ```
-		# mkdir /var/log/journal  # 持久化保存日志的目录
-		# mkdir /etc/systemd/journald.conf.d
-    
-		cat > /etc/systemd/journald.conf.d/99-prophet.conf <<EOF
-		[Journal]
-		# 持久化保存到磁盘
-		Storage=persistent
+# mkdir /var/log/journal  # 持久化保存日志的目录
+# mkdir /etc/systemd/journald.conf.d
 
-		# 压缩历史日志Compress=yes
+cat > /etc/systemd/journald.conf.d/99-prophet.conf <<EOF
+[Journal]
+# 持久化保存到磁盘
+Storage=persistent
 
-		SyncIntervalSec=5m
-		RateLimitInterval=30s
-		RateLimitBurst=1000
+# 压缩历史日志Compress=yes
 
-		# 最大占用空间 10G
-		SystemMaxUse=10G
+SyncIntervalSec=5m
+RateLimitInterval=30s
+RateLimitBurst=1000
 
-		# 单日志文件最大 200M
-		SystemMaxFileSize=200M
+# 最大占用空间 10G
+SystemMaxUse=10G
 
-		# 日志保存时间 2 周
-		MaxRetentionSec=2week
+# 单日志文件最大 200M
+SystemMaxFileSize=200M
 
-		# 不将日志转发到 syslog
-		ForwardToSyslog=no
-		EOF
-    
-		# systemctl restart systemd-journald
+# 日志保存时间 2 周
+MaxRetentionSec=2week
+
+# 不将日志转发到 syslog
+ForwardToSyslog=no
+EOF
+
+# systemctl restart systemd-journald
 ```
 
 ## 2.10、升级系统内核为 4.44
 ```
-    centos7.x系统自带的3.10.x内核存在一些BUG，导致运行的Docker、Kubernetes不稳定。
-    
-		# rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
-		# 安装完成后检查 /boot/grub2/grub.cfg 中对应内核 menuentry 中是否包含 initrd16 配置，如果没有，再安装一次！
-		# yum --enablerepo=elrepo-kernel install -y kernel-lt
-		# 设置开机从新内核启动
-		# grub2-set-default 'CentOS Linux (4.4.189-1.el7.elrepo.x86_64) 7 (Core)'
-		# 重启查看新内核
-		reboot
-		uname -r
+centos7.x系统自带的3.10.x内核存在一些BUG，导致运行的Docker、Kubernetes不稳定。
+
+# rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
+# 安装完成后检查 /boot/grub2/grub.cfg 中对应内核 menuentry 中是否包含 initrd16 配置，如果没有，再安装一次！
+# yum --enablerepo=elrepo-kernel install -y kernel-lt
+# 设置开机从新内核启动
+# grub2-set-default 'CentOS Linux (4.4.189-1.el7.elrepo.x86_64) 7 (Core)'
+# 重启查看新内核
+reboot
+uname -r
 ```		
 三、kube-proxy开启ipvs的前置条件(all)
 
