@@ -136,75 +136,85 @@ centos7.x系统自带的3.10.x内核存在一些BUG，导致运行的Docker、Ku
 # rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
 # 安装完成后检查 /boot/grub2/grub.cfg 中对应内核 menuentry 中是否包含 initrd16 配置，如果没有，再安装一次！
 # yum --enablerepo=elrepo-kernel install -y kernel-lt
+
 # 设置开机从新内核启动
 # grub2-set-default 'CentOS Linux (4.4.189-1.el7.elrepo.x86_64) 7 (Core)'
+
 # 重启查看新内核
-reboot
-uname -r
-```		
-三、kube-proxy开启ipvs的前置条件(all)
+# reboot
+# uname -r
+```
+## 2.10、kube-proxy开启ipvs的前置条件(all)
+```
+# modprobe br_netfilter
+# cat > /etc/sysconfig/modules/ipvs.modules <<EOF
+#!/bin/bash
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack_ipv4
+EOF
 
-	modprobe br_netfilter
-	cat > /etc/sysconfig/modules/ipvs.modules <<EOF
-	#!/bin/bash
-	modprobe -- ip_vs
-	modprobe -- ip_vs_rr
-	modprobe -- ip_vs_wrr
-	modprobe -- ip_vs_sh
-	modprobe -- nf_conntrack_ipv4
-	EOF
-	chmod 755 /etc/sysconfig/modules/ipvs.modules && bash /etc/sysconfig/modules/ipvs.modules &&lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+# chmod 755 /etc/sysconfig/modules/ipvs.modules && bash /etc/sysconfig/modules/ipvs.modules &&lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+```
 
+# 三、安装docker软件(所有节点都要装)
+```
+# yum install -y yum-utils device-mapper-persistent-data lvm2
 
+# yum-config-manager \
+--add-repo \
+http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 
-四、安装docker软件(all)
-	yum install -y yum-utils device-mapper-persistent-data lvm2
+# yum update -y && yum install -y docker-ce
 
-	yum-config-manager \
-		--add-repo \
-		http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-	
-	yum update -y && yum install -y docker-ce
-	
-	## 创建 /etc/docker 目录
-	mkdir /etc/docker
-	# 配置 daemon.json
-	cat > /etc/docker/daemon.json <<EOF
-	{
-	  "exec-opts": ["native.cgroupdriver=systemd"],
-	  "log-driver": "json-file",
-	  "log-opts": {
-	  "max-size": "100m"  
-	  }
-	}
-	EOF
-	mkdir -p /etc/systemd/system/docker.service.d
-	
-	# 重启docker服务
-	systemctl daemon-reload && systemctl restart docker && systemctl enable docker
+##启动docker并设置为开机自启
+# systemctl start docker && systemctl enable docker
 
+## 创建 /etc/docker 目录
+# mkdir /etc/docker
 
+# 配置 daemon.json
+# cat > /etc/docker/daemon.json <<EOF
+{
+"exec-opts": ["native.cgroupdriver=systemd"],
+"log-driver": "json-file",
+"log-opts": {
+"max-size": "100m"  
+}
+}
+EOF
 
-五、安装kubeadm(主从配置)(all)
-	1、添加kubernetes YUM软件源
-		cat <<EOF > /etc/yum.repos.d/kubernetes.repo
-		[kubernetes]
-		name=Kubernetes
-		baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
-		enabled=1
-		gpgcheck=0
-		repo_gpgcheck=0
-		gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-		http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
-		EOF
-	
-	2、安装kubeadm、kubectl、kubelet
-		yum -y  install  kubeadm-1.15.1 kubectl-1.15.1 kubelet-1.15.1
-		systemctl enable kubelet.service  #开机自启
+# mkdir -p /etc/systemd/system/docker.service.d
+
+# 重启docker服务
+systemctl daemon-reload && systemctl restart docker && systemctl enable docker
+```
 
 
+# 四、安装kubeadm(主从配置)(所有节点都配置)
 
-六、导入镜像到docker(all)
+## 4.1、添加kubernetes YUM软件源
+```
+# cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
+```
+## 4.2、安装kubeadm、kubectl、kubelet
+```
+# yum -y  install  kubeadm-1.15.1 kubectl-1.15.1 kubelet-1.15.1
+# systemctl enable kubelet.service  #开机自启
+```
+
+# 五、导入镜像到docker(all)
 	1、把kubeadm-basic.images.tar.gz包导入到/root/目录下并解压
 		tar -zxvf kubeadm-basic.images.tar.gz
 	
