@@ -24,14 +24,14 @@
 
 ## 2.2 配置harbor.cfg
 
-hostname：目标的主机名或者完全限定域名
-ui_url_protocol：http或https。默认为http
-db_password：用于db_auth的的MySQL数据库的根密码。更改此密码进行任何生产用途
-max_job_workers：(默认值为3)作业服务中的复制工作人员的最大数量，对于每个映像复制作业，工作人员将存储库的所有标签同步到远程目标。增加此数字允许系统中更多的并发复制作业。但是，由于每个工作人员都会消耗一定数量的网络/CPU/IO资源，请根据主机的硬件资源，仔细选择该属性的值
-customize_crt：（on或off。默认为on）当此属性打开时，prepare脚本将为注册表的令牌的生成/验证创验证创建私钥和根证书
-ssl_cert：：SSL证书的路径，，仅当协议设置为https时才应用
-ssl_cert_key：：SSL密钥的路径，仅当协议设置为https时才应用
-secretkey_path：用于在复制策略中加密或解密远程注册表的密码的密钥路径
+hostname：目标的主机名或者完全限定域名  
+ui_url_protocol：http或https。默认为http  
+db_password：用于db_auth的的MySQL数据库的根密码。更改此密码进行任何生产用途  
+max_job_workers：(默认值为3)作业服务中的复制工作人员的最大数量，对于每个映像复制作业，工作人员将存储库的所有标签同步到远程目标。增加此数字允许系统中更多的并发复制作业。但是，由于每个工作人员都会消耗一定数量的网络/CPU/IO资源，请根据主机的硬件资源，仔细选择该属性的值  
+customize_crt：（on或off。默认为on）当此属性打开时，prepare脚本将为注册表的令牌的生成/验证创验证创建私钥和根证书  
+ssl_cert：：SSL证书的路径，，仅当协议设置为https时才应用  
+ssl_cert_key：：SSL密钥的路径，仅当协议设置为https时才应用  
+secretkey_path：用于在复制策略中加密或解密远程注册表的密码的密钥路径  
 ```
 # mv harbor /usr/local/
 
