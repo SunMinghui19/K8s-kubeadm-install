@@ -215,162 +215,213 @@ EOF
 ```
 
 # 五、导入镜像到docker(all)
-	1、把kubeadm-basic.images.tar.gz包导入到/root/目录下并解压
-		tar -zxvf kubeadm-basic.images.tar.gz
-	
-	2、编写脚本文件load-images.sh
-		#!/bin/bash
-		ls /root/kubeadm-basic.images > /tmp/image-list.txt
-		cd /root/kubeadm-basic.images
-		for i in $( cat /tmp/imaage-list.txt )
-		do
-				docker load -i $i
-		done
-		rm -rf /tmp/image-list.txt
-		
-	3、运行脚本把/root/kubeadm-basic.images下的所有镜像导入到docker中去
-		
-		
-		
-七、初始化主节点(master)
-	1、显示init默认的初始化文件，并打印出来到kubeadm-config.yaml文件中
-		kubeadm config print init-defaults > /root/kubeadm-config.yaml
-	
-	2、修改kubeadm-config.yaml配置文件
-		vim /root/kubeadm-config.yaml
-			apiVersion: kubeadm.k8s.io/v1beta2
-			bootstrapTokens:
-			- groups:
-			  - system:bootstrappers:kubeadm:default-node-token
-			  token: abcdef.0123456789abcdef
-			  ttl: 24h0m0s
-			  usages:
-			  - signing
-			  - authentication
-			kind: InitConfiguration
-			localAPIEndpoint:
-			  advertiseAddress: 192.168.88.10   #修改为当前服务器地址
-			  bindPort: 6443
-			nodeRegistration:
-			  criSocket: /var/run/dockershim.sock
-			  name: k8s-master01
-			  taints:
-			  - effect: NoSchedule
-				key: node-role.kubernetes.io/master
-			---
-			apiServer:
-			  timeoutForControlPlane: 4m0s
-			apiVersion: kubeadm.k8s.io/v1beta2
-			certificatesDir: /etc/kubernetes/pki
-			clusterName: kubernetes
-			controllerManager: {}
-			dns:
-			  type: CoreDNS
-			etcd:
-			  local:
-				dataDir: /var/lib/etcd
-			imageRepository: k8s.gcr.io
-			kind: ClusterConfiguration
-			kubernetesVersion: v1.15.1  #修改为当前kubeadm版本号
-			networking:
-			  dnsDomain: cluster.local
-			  podSubnet: "10.244.0.0/16"  #添加此行
-			  serviceSubnet: 10.96.0.0/12
-			scheduler: {} #添加下面字段，改默认调度模式为ipvs调度
-			---
-			apiVersion: kubeproxy.config.k8s.io/v1alpha1
-			kind: KubeProxyConfiguration
-			featureGates:
-			  SupportIPVSProxyMode: true
-			mode: ipvs
+```
+1、把kubeadm-basic.images.tar.gz包导入到/root/目录下并解压
+	tar -zxvf kubeadm-basic.images.tar.gz
 
-	3、开始初始化：指定从哪个yaml文件进行初始化安装，自动颁发证书，并将所有信息写入到kubeadm-init.log	
-		kubeadm init --config=/root/kubeadm-config.yaml --experimental-upload-certs | tee /root/kubeadm-init.log
-			查看/root/kubeadm-init.log显示下面表明初始化成功
-				Your Kubernetes control-plane has initialized successfully!
-		配置文件在/etc/kubernetes/下
-			[root@k8s-master01 kubernetes]# ls /etc/kubernetes/
-			admin.conf  controller-manager.conf  kubelet.conf  manifests  pki  scheduler.conf
+2、编写脚本文件load-images.sh
+	#!/bin/bash
+	ls /root/kubeadm-basic.images > /tmp/image-list.txt
+	cd /root/kubeadm-basic.images
+	for i in $( cat /tmp/imaage-list.txt )
+	do
+			docker load -i $i
+	done
+	rm -rf /tmp/image-list.txt
 
-	4、根据日志提示操作
-		mkdir -p $HOME/.kube
-		sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-		sudo chown $(id -u):$(id -g) $HOME/.kube/config
+3、运行脚本把/root/kubeadm-basic.images下的所有镜像导入到docker中去
+```
 
-	5、查看节点
-		[root@k8s-master01 ~]# kubectl get node
-		NAME           STATUS     ROLES    AGE   VERSION
-		k8s-master01   NotReady   master   21m   v1.15.1
+# 六、初始化主节点(master)
+
+## 6.1、导入镜像（所有节点都需要做）
+```
+先将kubeadm-basic.images.tar.gz从本机复制到节点的/root/下
+
+# tar zxvf kubeadm-basic.images.tar.gz
+
+##编写一个脚本导入所有镜像
+# vim load-images.sh
+写如如下内容
+	 #!/bin/bash
+
+	ls /root/kubeadm-basic.images > /tmp/image-list.txt
+
+	cd /root/kubeadm-basic.images
+
+	for i in $( cat /tmp/image-list.txt )
+	do
+		docker load -i $i
+
+	done
+rm -rf /tmp/image-list.txt
+
+##赋予执行权限
+# chmod a+x load-images.sh
+
+# ./load-images.sh
+```
+
+## 6.2、显示init默认的初始化文件，并打印出来到kubeadm-config.yaml文件中
+```
+# kubeadm config print init-defaults > /root/kubeadm-config.yaml
+```
+## 6.3、修改kubeadm-config.yaml配置文件
+```
+# vim /root/kubeadm-config.yaml
+
+	apiVersion: kubeadm.k8s.io/v1beta2
+	bootstrapTokens:
+	- groups:
+	  - system:bootstrappers:kubeadm:default-node-token
+	  token: abcdef.0123456789abcdef
+	  ttl: 24h0m0s
+	  usages:
+	  - signing
+	  - authentication
+	kind: InitConfiguration
+	localAPIEndpoint:
+	  advertiseAddress: 192.168.88.10   #修改为当前服务器地址
+	  bindPort: 6443
+	nodeRegistration:
+	  criSocket: /var/run/dockershim.sock
+	  name: k8s-master01
+	  taints:
+	  - effect: NoSchedule
+		key: node-role.kubernetes.io/master
+	---
+	apiServer:
+	  timeoutForControlPlane: 4m0s
+	apiVersion: kubeadm.k8s.io/v1beta2
+	certificatesDir: /etc/kubernetes/pki
+	clusterName: kubernetes
+	controllerManager: {}
+	dns:
+	  type: CoreDNS
+	etcd:
+	  local:
+		dataDir: /var/lib/etcd
+	imageRepository: k8s.gcr.io
+	kind: ClusterConfiguration
+	kubernetesVersion: v1.15.1  #修改为当前kubeadm版本号
+	networking:
+	  dnsDomain: cluster.local
+	  podSubnet: "10.244.0.0/16"  #添加此行
+	  serviceSubnet: 10.96.0.0/12
+	scheduler: {} #添加下面字段，改默认调度模式为ipvs调度
+	---
+	apiVersion: kubeproxy.config.k8s.io/v1alpha1
+	kind: KubeProxyConfiguration
+	featureGates:
+	  SupportIPVSProxyMode: true
+	mode: ipvs
+```
+## 6.4、开始初始化：指定从哪个yaml文件进行初始化安装，自动颁发证书，并将所有信息写入到kubeadm-init.log	
+```
+kubeadm init --config=/root/kubeadm-config.yaml --experimental-upload-certs | tee /root/kubeadm-init.log
+查看/root/kubeadm-init.log显示下面表明初始化成功
+Your Kubernetes control-plane has initialized successfully!
+
+##根据日志提示操作
+# mkdir -p $HOME/.kube
+#sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+#sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+```
+
+## 6.5、查看节点
+```
+[root@k8s-master01 ~]# kubectl get node
+NAME           STATUS     ROLES    AGE   VERSION
+k8s-master01   NotReady   master   21m   v1.15.1
+```
+
+Tip：配置文件在/etc/kubernetes/下
+```
+[root@k8s-master1 kubernetes]# ls /etc/kubernetes/
+admin.conf  controller-manager.conf  kubelet.conf  manifests  pki  scheduler.conf
+```
+# 七、部署网络（master）
+## 7.1、整理目录
+```
+[root@k8s-master1 ~]# mkdir -p /root/install-k8s/
+[root@k8s-master1 ~]# mv kubeadm-config.yaml kubeadm-init.log /root/install-k8s/
+[root@k8s-master1 ~]# cd install-k8s/
+[root@k8s-master1 install-k8s]# mkdir core
+[root@k8s-master1 install-k8s]# mv kubeadm-config.yaml kubeadm-init.log core/
+[root@k8s-master1 install-k8s]# mkdir plugin
+[root@k8s-master1 install-k8s]# cd plugin/
+[root@k8s-master1 plugin]# mkdir flannel
+[root@k8s-master1 plugin]# cd flannel/
+```
+## 7.2、下载kube-flannel.yml
+```
+# vim /etc/hosts  
+添加一条 199.232.68.133 raw.githubusercontent.com 
+wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+```
+## 7.3、执行完后，/root目录下文件结构如下
+```
+--root/
+--install-k8s/
+	--core/
+		--kubeadm-config.yaml  
+		--kubeadm-init.log
+	--plugin/
+		--flannel/
+			kube-flannel.yml
+```
+## 7.4、再执行yml文件
+```
+# kubectl apply -f kube-flannel.yml
+```
+## 7.5、重启kubelet并查看
+```
+[root@k8s-master1 flannel]# kubectl get pods -A
+NAMESPACE     NAME                                  READY   STATUS    RESTARTS   AGE
+kube-system   coredns-5c98db65d4-s4rvh              1/1     Running   0          29m
+kube-system   coredns-5c98db65d4-v555f              1/1     Running   0          29m
+kube-system   etcd-k8s-master1                      1/1     Running   0          28m
+kube-system   kube-apiserver-k8s-master1            1/1     Running   0          28m
+kube-system   kube-controller-manager-k8s-master1   1/1     Running   0          28m
+kube-system   kube-flannel-ds-amd64-l8725           1/1     Running   0          55s
+kube-system   kube-proxy-pmjml                      1/1     Running   0          29m
+kube-system   kube-scheduler-k8s-master1            1/1     Running   0          29m
+```
+
+# 八、node节点加入集群
+
+## 8.1、查看master节点上的kubeadm-init.log
+```
+#查看对应秘钥
+# cat /root/install-k8s/core/kubeadm-init.log
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.133.60:6443 --token abcdef.0123456789abcdef \
+    --discovery-token-ca-cert-hash sha256:7ea56270ff231268914af8a5158349e369d2048a9ed93ddf69014f3d2ebca5af 
+```
+## 8.2、在node节点上执行即可
+```
+[root@k8s-node1 ~]# kubeadm join 192.168.133.60:6443 --token abcdef.0123456789abcdef \
+>     --discovery-token-ca-cert-hash sha256:7ea56270ff231268914af8a5158349e369d2048a9ed93ddf69014f3d2ebca5af
+
+[root@k8s-node2 ~]# kubeadm join 192.168.133.60:6443 --token abcdef.0123456789abcdef \
+>     --discovery-token-ca-cert-hash sha256:7ea56270ff231268914af8a5158349e369d2048a9ed93ddf69014f3d2ebca5af
+```
+## 8.3、查看节点是否加入
+```
+[root@k8s-master01 core]# kubectl get node
+NAME           STATUS   ROLES    AGE   VERSION
+k8s-master01   Ready    master   95m   v1.15.1
+k8s-node01     Ready    <none>   42s   v1.15.1
+k8s-node02     Ready    <none>   42s   v1.15.1
+```	
 
 
 
-八、部署网络（master）
-	1、整理目录
-		[root@k8s-master01 ~]# ls
-		anaconda-ks.cfg       kubeadm-basic.images.tar.gz  kubeadm-init.log
-		kubeadm-basic.images  kubeadm-config.yaml          load-images.sh
-		[root@k8s-master01 ~]# mkdir -p /root/install-k8s/
-		[root@k8s-master01 ~]# mv kubeadm-config.yaml kubeadm-init.log /root/install-k8s/
-		[root@k8s-master01 ~]# cd install-k8s/
-		[root@k8s-master01 install-k8s]# mkdir core
-		[root@k8s-master01 install-k8s]# mv kubeadm-config.yaml kubeadm-init.log core/
-		[root@k8s-master01 install-k8s]# mkdir plugin
-		[root@k8s-master01 install-k8s]# cd plugin/
-		[root@k8s-master01 plugin]# mkdir flannel
-		[root@k8s-master01 plugin]# cd flannel/
-	
-	2、下载kube-flannel.yml
-		在/etc/hosts文件添加一条 199.232.68.133 raw.githubusercontent.com
-		wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-	
-	3、执行完后，/root目录下文件结构如下
-		--root/
-		--install-k8s/
-			--core/
-				--kubeadm-config.yaml  
-				--kubeadm-init.log
-			--plugin/
-				--flannel/
-					kube-flannel.yml
-	4、再执行yml文件
-		[root@k8s-master01 flannel]# kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-	
-	5、重启kubelet并查看
-		[root@k8s-master01 flannel]# systemctl restart kubelet
-		[root@k8s-master01 flannel]# kubectl get pods -A
-		NAMESPACE     NAME                                   READY   STATUS    RESTARTS   AGE
-		kube-system   coredns-5c98db65d4-pj448               1/1     Running   0          77m
-		kube-system   coredns-5c98db65d4-plt4h               1/1     Running   0          77m
-		kube-system   etcd-k8s-master01                      1/1     Running   0          76m
-		kube-system   kube-apiserver-k8s-master01            1/1     Running   0          76m
-		kube-system   kube-controller-manager-k8s-master01   1/1     Running   0          76m
-		kube-system   kube-flannel-ds-amd64-fp694            1/1     Running   0          14m
-		kube-system   kube-proxy-77xjw                       1/1     Running   0          77m
-		kube-system   kube-scheduler-k8s-master01            1/1     Running   0          76m
 
 
-九、node节点加入集群
-	1、查看master节点上的kubeadm-init.log
-		Then you can join any number of worker nodes by running the following on each as root:
 
-		kubeadm join 192.168.88.10:6443 --token abcdef.0123456789abcdef \
-			--discovery-token-ca-cert-hash sha256:67ca77ec61e869549fffe1b05468438109801295b469b79d7f40cf080551a548 
-	
-	2、在node节点上执行即可
-		[root@k8s-node01 ~]# kubeadm join 192.168.88.10:6443 --token abcdef.0123456789abcdef \
-		>     --discovery-token-ca-cert-hash sha256:67ca77ec61e869549fffe1b05468438109801295b469b79d7f40cf080551a548
-
-		[root@k8s-node02 ~]# kubeadm join 192.168.88.10:6443 --token abcdef.0123456789abcdef \
-		>     --discovery-token-ca-cert-hash sha256:67ca77ec61e869549fffe1b05468438109801295b469b79d7f40cf080551a548
-	
-	3、查看节点是否加入
-		[root@k8s-master01 core]# kubectl get node
-		NAME           STATUS   ROLES    AGE   VERSION
-		k8s-master01   Ready    master   95m   v1.15.1
-		k8s-node01     Ready    <none>   42s   v1.15.1
-		k8s-node02     Ready    <none>   42s   v1.15.1
-		
-		
 docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-apiserver:v1.17.3
 docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager:v1.17.3
 docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler:v1.17.3
