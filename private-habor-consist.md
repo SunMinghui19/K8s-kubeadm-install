@@ -149,7 +149,7 @@ secretkey_path：用于在复制策略中加密或解密远程注册表的密码
 # cp server.key server.key.org
 # openssl rsa -in server.key.org -out server.key
 # openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
-# mkdir  /data/cert
+
 # chmod -R 777 /data/cert
 
 ```
