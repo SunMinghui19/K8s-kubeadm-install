@@ -449,7 +449,9 @@ kubeadm join 192.168.133.30:6443 --token 61x67u.2ioif503ity5ure8 \
 
 https://www.cnblogs.com/oscarli/p/12737409.html
 
-
+# 问题
+1、Failed to start Docker Application Container Engine（master上的docker启动不了）
+原因是/etc/docker/daemon.json中出现了错误导致启动不起来，改正文件错误后systemctl daemon-reload就好了
 
 
 
