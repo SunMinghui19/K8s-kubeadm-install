@@ -220,6 +220,8 @@ EOF
 	tar -zxvf kubeadm-basic.images.tar.gz
 
 2、编写脚本文件load-images.sh
+# vim load-images.sh
+写如如下内容
 	#!/bin/bash
 	ls /root/kubeadm-basic.images > /tmp/image-list.txt
 	cd /root/kubeadm-basic.images
@@ -228,45 +230,23 @@ EOF
 			docker load -i $i
 	done
 	rm -rf /tmp/image-list.txt
-
+	
+##赋予执行权限
+# chmod a+x load-images.sh
 3、运行脚本把/root/kubeadm-basic.images下的所有镜像导入到docker中去
+# ./load-images.sh
+4、将镜像和shell文件拷贝到其它节点
+scp -r kubeadm-basic.images root@k8s-node1:/root/
+5、在其它节点行执行shell脚本
 ```
 
 # 六、初始化主节点(master)
 
-## 6.1、导入镜像（所有节点都需要做）
-```
-先将kubeadm-basic.images.tar.gz从本机复制到节点的/root/下
-
-# tar zxvf kubeadm-basic.images.tar.gz
-
-##编写一个脚本导入所有镜像
-# vim load-images.sh
-写如如下内容
-	 #!/bin/bash
-
-	ls /root/kubeadm-basic.images > /tmp/image-list.txt
-
-	cd /root/kubeadm-basic.images
-
-	for i in $( cat /tmp/image-list.txt )
-	do
-		docker load -i $i
-
-	done
-rm -rf /tmp/image-list.txt
-
-##赋予执行权限
-# chmod a+x load-images.sh
-
-# ./load-images.sh
-```
-
-## 6.2、显示init默认的初始化文件，并打印出来到kubeadm-config.yaml文件中
+## 6.1、显示init默认的初始化文件，并打印出来到kubeadm-config.yaml文件中
 ```
 # kubeadm config print init-defaults > /root/kubeadm-config.yaml
 ```
-## 6.3、修改kubeadm-config.yaml配置文件
+## 6.2、修改kubeadm-config.yaml配置文件
 ```
 # vim /root/kubeadm-config.yaml
 
@@ -316,7 +296,7 @@ rm -rf /tmp/image-list.txt
 	  SupportIPVSProxyMode: true
 	mode: ipvs
 ```
-## 6.4、开始初始化：指定从哪个yaml文件进行初始化安装，自动颁发证书，并将所有信息写入到kubeadm-init.log	
+## 6.3、开始初始化：指定从哪个yaml文件进行初始化安装，自动颁发证书，并将所有信息写入到kubeadm-init.log	
 ```
 kubeadm init --config=/root/kubeadm-config.yaml --experimental-upload-certs | tee /root/kubeadm-init.log
 查看/root/kubeadm-init.log显示下面表明初始化成功
@@ -329,7 +309,7 @@ Your Kubernetes control-plane has initialized successfully!
 
 ```
 
-## 6.5、查看节点
+## 6.4、查看节点
 ```
 [root@k8s-master01 ~]# kubectl get node
 NAME           STATUS     ROLES    AGE   VERSION
