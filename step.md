@@ -236,7 +236,7 @@ EOF
 3、运行脚本把/root/kubeadm-basic.images下的所有镜像导入到docker中去
 # ./load-images.sh
 4、将镜像和shell文件拷贝到其它节点
-scp -r kubeadm-basic.images root@k8s-node1:/root/
+# scp -r kubeadm-basic.images  load-images.sh root@k8s-node2:/root/
 5、在其它节点行执行shell脚本
 ```
 
