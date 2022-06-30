@@ -281,7 +281,7 @@ EOF
 	etcd:
 	  local:
 		dataDir: /var/lib/etcd
-	imageRepository: k8s.gcr.io
+	imageRepository: registry.aliyuncs.com
 	kind: ClusterConfiguration
 	kubernetesVersion: v1.15.1  #修改为当前kubeadm版本号
 	networking:
